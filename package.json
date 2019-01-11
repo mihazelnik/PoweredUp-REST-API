@@ -1,0 +1,34 @@
+{
+  "name": "PoweredUp-REST-API",
+  "version": "1.0.0",
+  "description": "REST API for LEGO Powered UP components.",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MihaZelnik/PoweredUp-REST-API.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MihaZelnik/PoweredUp-REST-API/issues"
+  },
+  "homepage": "https://github.com/MihaZelnik/PoweredUp-REST-API#readme",
+  "dependencies": {
+    "koa": "^2.6.2",
+    "koa-bodyparser": "^4.2.1",
+    "koa-json": "^2.0.2",
+    "koa-router": "^7.4.0",
+    "node-poweredup": "^1.5.1",
+    "xpc-connection": "sandeepmistry/node-xpc-connection#pull/26/head"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.9"
+  },
+  "resolutions": {
+    "xpc-connection": "sandeepmistry/node-xpc-connection#pull/26/head"
+  }
+}

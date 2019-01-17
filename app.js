@@ -1,12 +1,18 @@
-const Koa = require("koa");
-const KoaRouter = require("koa-router");
+const koa = require("koa");
+const router = require("koa-router");
+const websockify = require('koa-websocket');
 const json = require("koa-json");
 const bodyParser = require("koa-bodyparser");
 const PoweredUP = require("node-poweredup");
 
-const app = new Koa();
-const router = new KoaRouter();
+
+const app =  new koa();
+
+const http = router();
+const ws = router();
 const poweredUP = new PoweredUP.PoweredUP();
+
+const socket = websockify(app);
 
 app.use(json());
 app.use(bodyParser());
@@ -63,19 +69,25 @@ poweredUP.on("discover", async hub => {
   hub.on("disconnect", () => {
     console.log(`Hub ${hub.uuid} disconnected`);
   });
+  port = "B";
+  // hub.on("color", async (port, color) => {
+  //   console.log(color);
+  // });
 });
 
-router.get("/hubs/", hubs);
+http.get("/hubs/", hubs);
 
 function hubInfo(hub) {
   const { uuid, batteryLevel, current, name, rssi } = hub;
   const hubTypeId = hub.getHubType();
   const hubType = { name: HUBTYPES[hubTypeId], id: hubTypeId };
   let ports = [];
-  PORTS.forEach(port => {
-    const deviceType = hub.getPortDeviceType(port);
-    ports.push({ port: port, name: DEVICETYPES[deviceType], id: deviceType });
-  });
+  if (hubTypeId != 4) {
+    PORTS.forEach(port => {
+      const deviceType = hub.getPortDeviceType(port);
+      ports.push({ port: port, name: DEVICETYPES[deviceType], id: deviceType });
+    });
+  }
   const data = {
     uuid,
     batteryLevel,
@@ -98,7 +110,7 @@ async function hubs(ctx) {
   await ctx;
 }
 
-router.get("/hubs/:uuid/", hub);
+http.get("/hubs/:uuid/", hub);
 
 async function hub(ctx) {
   const { uuid } = ctx.params;
@@ -109,7 +121,7 @@ async function hub(ctx) {
   await ctx;
 }
 
-router.get("/hubs/:uuid/:port/speed/:speed", speedControl);
+http.get("/hubs/:uuid/:port/speed/:speed", speedControl);
 
 async function speedControl(ctx) {
   const { uuid, port, speed } = ctx.params;
@@ -123,7 +135,7 @@ async function speedControl(ctx) {
   await ctx;
 }
 
-router.get("/hubs/:uuid/:port/rampspeed/:fromSpeed/:toSpeed/:time",
+http.get("/hubs/:uuid/:port/rampspeed/:fromSpeed/:toSpeed/:time",
   rampSpeedControl
 );
 
@@ -138,9 +150,25 @@ async function rampSpeedControl(ctx) {
   await ctx;
 }
 
-router.get("/hubs/:uuid/:port/stop", motorStop);
+http.get("/hubs/:uuid/stop", motorStop);
 
 async function motorStop(ctx) {
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);
+  ctx.assert(hub, 404, "Hub is not connected!");
+  PORTS.forEach(port => {
+    const deviceType = hub.getPortDeviceType(port);
+    if (deviceType === 2) {
+      hub.hardStopMotor(port);
+    }
+  });
+  ctx.body = { uuid};
+  await ctx;
+}
+
+http.get("/hubs/:uuid/:port/stop", motorStopPort);
+
+async function motorStopPort(ctx) {
   const { uuid, port } = ctx.params;
   hub = poweredUP.getConnectedHubByUUID(uuid);
   ctx.assert(hub, 404, "Hub is not connected!");
@@ -151,7 +179,7 @@ async function motorStop(ctx) {
   await ctx;
 }
 
-router.get("/hubs/:uuid/colors/:color/", LEDcolorChange);
+http.get("/hubs/:uuid/led/:color/", LEDcolorChange);
 
 async function LEDcolorChange(ctx) {
   const { uuid, color } = ctx.params;
@@ -164,5 +192,17 @@ async function LEDcolorChange(ctx) {
   await ctx;
 }
 
-app.use(router.routes()).use(router.allowedMethods());
+ws.get('/:uuid/color', async (ctx) => {
+  console.log('COLOR');
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);  
+  ctx.websocket.on('message', (message) => {
+    hub.on("color", async (port, color) => {
+      ctx.websocket.send(color);
+      });
+  });
+});
+
+app.use(http.routes()).use(http.allowedMethods());
+app.ws.use(ws.routes()).use(ws.allowedMethods());
 app.listen(3000, () => console.log("Server started..."));

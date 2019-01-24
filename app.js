@@ -18,7 +18,7 @@ app.use(json());
 app.use(bodyParser());
 
 const COLORS = {
-  black: 0,
+  off: 0,
   pink: 1,
   purple: 2,
   blue: 3,
@@ -72,7 +72,9 @@ poweredUP.on("discover", async hub => {
   port = "B";
   // hub.on("color", async (port, color) => {
   //   console.log(color);
+  //   hub.setLEDColor(color);
   // });
+  // hub.subscribe(port)
 });
 
 http.get("/hubs/", hubs);
@@ -192,8 +194,7 @@ async function LEDcolorChange(ctx) {
   await ctx;
 }
 
-ws.get('/:uuid/color', async (ctx) => {
-  console.log('COLOR');
+ws.get('/:uuid/sensor/color', async (ctx) => {
   const { uuid } = ctx.params;
   hub = poweredUP.getConnectedHubByUUID(uuid);  
   ctx.websocket.on('message', (message) => {

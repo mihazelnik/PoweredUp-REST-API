@@ -75,6 +75,11 @@ poweredUP.on("discover", async hub => {
   //   hub.setLEDColor(color);
   // });
   // hub.subscribe(port)
+
+  // hub.on("distance", async (port, color, distance) => {
+  //   console.log(distance);
+  //   console.log(color);
+  //   });
 });
 
 http.get("/hubs/", hubs);
@@ -199,6 +204,27 @@ ws.get('/:uuid/sensor/color', async (ctx) => {
   hub = poweredUP.getConnectedHubByUUID(uuid);  
   ctx.websocket.on('message', (message) => {
     hub.on("color", async (port, color) => {
+      ctx.websocket.send(color);
+      });
+  });
+});
+
+ws.get('/:uuid/sensor/distance', async (ctx) => {
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);  
+  ctx.websocket.on('message', (message) => {
+    hub.on("distance", async (port, distance) => {
+      ctx.websocket.send(distance);
+      });
+  });
+});
+
+ws.get('/:uuid/sensor/color-distance', async (ctx) => {
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);  
+  ctx.websocket.on('message', (message) => {
+    hub.on("colorAndDistance", async (port, color, distance) => {
+      ctx.websocket.send(distance);
       ctx.websocket.send(color);
       });
   });

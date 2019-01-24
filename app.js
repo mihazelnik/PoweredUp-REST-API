@@ -61,31 +61,27 @@ const DEVICETYPES = {
 
 const PORTS = ["A", "B"];
 
-console.log("Looking for Hubs...");
 poweredUP.scan();
-poweredUP.on("discover", async hub => {
-  await hub.connect();
-  console.log(`Connected to ${hub.uuid}!`);
-  hub.on("disconnect", () => {
-    console.log(`Hub ${hub.uuid} disconnected`);
+  poweredUP.on("discover", async hub => {
+    await hub.connect();
+    console.log(`Connected to ${hub.uuid}`);
   });
-  port = "B";
-  // hub.on("color", async (port, color) => {
-  //   console.log(color);
-  //   hub.setLEDColor(color);
-  // });
-  // hub.subscribe(port)
 
-  // hub.on("distance", async (port, color, distance) => {
-  //   console.log(distance);
-  //   console.log(color);
-  //   });
-});
+
+http.get("/scan/", scan);
+
+async function scan(ctx) {
+  poweredUP.scan();
+  poweredUP.on("discover", async hub => {
+    await hub.connect();
+  });
+  await ctx;
+}
 
 http.get("/hubs/", hubs);
 
 function hubInfo(hub) {
-  const { uuid, batteryLevel, current, name, rssi } = hub;
+  const { uuid, batteryLevel, firmwareVersion, current, name, rssi } = hub;
   const hubTypeId = hub.getHubType();
   const hubType = { name: HUBTYPES[hubTypeId], id: hubTypeId };
   let ports = [];
@@ -98,6 +94,7 @@ function hubInfo(hub) {
   const data = {
     uuid,
     batteryLevel,
+    firmwareVersion,
     current,
     name,
     rssi,
@@ -124,6 +121,28 @@ async function hub(ctx) {
   hub = poweredUP.getConnectedHubByUUID(uuid);
   ctx.assert(hub, 404, "Hub is not connected!");
 
+  ctx.body = hubInfo(hub);
+  await ctx;
+}
+
+http.get("/hubs/:uuid/disconnect", hubDisconnect);
+
+async function hubDisconnect(ctx) {
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);
+  ctx.assert(hub, 404, "Hub is not connected!");
+  hub.disconnect();
+  ctx.body = hubInfo(hub);
+  await ctx;
+}
+
+http.get("/hubs/:uuid/connect", hubConnect);
+
+async function hubConnect(ctx) {
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);
+  ctx.assert(hub, 404, "Hub is not connected!");
+  hub.connect();
   ctx.body = hubInfo(hub);
   await ctx;
 }
@@ -166,7 +185,7 @@ async function motorStop(ctx) {
   PORTS.forEach(port => {
     const deviceType = hub.getPortDeviceType(port);
     if (deviceType === 2) {
-      hub.hardStopMotor(port);
+      hub.brakeMotor(port);
     }
   });
   ctx.body = { uuid};

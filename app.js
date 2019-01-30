@@ -62,21 +62,15 @@ const DEVICETYPES = {
 const PORTS = ["A", "B"];
 
 poweredUP.scan();
-  poweredUP.on("discover", async hub => {
+console.log("Looking for Hubs...");
+poweredUP.on("discover", async (hub) => {
     await hub.connect();
-    console.log(`Connected to ${hub.uuid}`);
-  });
+    console.log(`Connected to ${hub.name} (${hub.uuid})`);
 
-
-http.get("/scan/", scan);
-
-async function scan(ctx) {
-  poweredUP.scan();
-  poweredUP.on("discover", async hub => {
-    await hub.connect();
-  });
-  await ctx;
-}
+    hub.on("disconnect", () => {
+        console.log(`Hub ${hub.name} (${hub.uuid}) disconnected`);
+    })
+});
 
 http.get("/hubs/", hubs);
 
@@ -118,8 +112,13 @@ http.get("/hubs/:uuid/", hub);
 
 async function hub(ctx) {
   const { uuid } = ctx.params;
+  const { name } = ctx.query;
   hub = poweredUP.getConnectedHubByUUID(uuid);
   ctx.assert(hub, 404, "Hub is not connected!");
+
+  if (name) {
+    hub.setName(name);
+  }
 
   ctx.body = hubInfo(hub);
   await ctx;
@@ -143,6 +142,17 @@ async function hubConnect(ctx) {
   hub = poweredUP.getConnectedHubByUUID(uuid);
   ctx.assert(hub, 404, "Hub is not connected!");
   hub.connect();
+  ctx.body = hubInfo(hub);
+  await ctx;
+}
+
+http.get("/hubs/:uuid/shutdown", shutdown);
+
+async function shutdown(ctx) {
+  const { uuid } = ctx.params;
+  hub = poweredUP.getConnectedHubByUUID(uuid);
+  ctx.assert(hub, 404, "Hub is not connected!");
+  hub.shutdown();
   ctx.body = hubInfo(hub);
   await ctx;
 }
